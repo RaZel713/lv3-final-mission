@@ -1,0 +1,67 @@
+# services: 컨테이너로 실행할 애플리케이션 단위를 정의합니다.
+# docker compose up을 실행하면 프로젝트 이름_default 라는 사용자 정의 브리지 네트워크가 하나 생성됩니다.
+# services 내부 컨테이너끼리는 서비스명(hostname)으로 네트워크 통신이 가능합니다.
+services:
+  # mysql: 서비스명입니다. compose 네트워크 내부 hostname 역할을 합니다.
+  mysql:
+    # docker hub의 MySQL 8.4.5 공식 이미지 사용
+    image: mysql:8.4.5
+    # 컨테이너 이름을 고정(docker ps에서 확인 가능)
+    container_name: lv3-final-mission-mysql
+    # 호스트 33069 포트를 컨테이너 3306 포트에 연결. 호스트 PC에서 localhost:33069로 DB 접속 가능.
+    ports:
+      # EC2 외부에서 DB에 직접 접근하지 못하게 localhost 바인딩
+      - "127.0.0.1:33069:3306"
+    # MySQL 초기 설정용 환경 변수
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: beauty_shop
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      # lv3-final-mission-mysql-data: 호스트 파일 시스템의 볼륨 이름(Named Volume 방식). 설정 하단에 해당 이름의 Named Volume이 없으면 자동으로 이 이름의 볼륨을 생성합니다.
+      # /var/lib/mysql: mysql 컨테이너 내부 경로
+      - lv3-final-mission-mysql-data:/var/lib/mysql
+      # init-user.sql을 실행하기 위함
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    # MySQL 컨테이너의 헬스체크 방법 정의
+    # 10초마다 검사, 5초 타임아웃, 최대 5번 시도
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # 컨테이너가 종료되면 자동으로 재시작합니다.
+    restart: unless-stopped
+
+  # spring-app: 서비스명(hostname)
+  spring-app:
+    # 아래는 Dockerfile로 직접 빌드하는 방식
+    build:
+      context: ../..
+      dockerfile: lv3-final-mission-config/dev/Dockerfile
+    container_name: lv3-final-mission-spring-app
+    ports:
+      - "8080:8080"
+    volumes:
+      # 컨테이너 실행 시기에 로컬 application-dev.yml을 컨테이너 /config/ 경로에 마운트
+      - ./application-dev.yml:/config/application-dev.yml:ro
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/beauty_shop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_PROFILES_ACTIVE: dev
+    command: >
+      --spring.profiles.active=dev
+      --spring.config.location=/config/application-dev.yml
+      --server.port=8080
+    # mysql 컨테이너가 먼저 시작되도록 보장.
+    depends_on:
+      mysql:
+        # MySQL이 healthy 상태일 때까지 대기했다가 실행합니다.
+        condition: service_healthy
+    restart: unless-stopped
+
+# Named Volume을 정의
+volumes:
+  lv3-final-mission-mysql-data:

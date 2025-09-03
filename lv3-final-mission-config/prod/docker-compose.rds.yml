@@ -1,0 +1,33 @@
+# Production environment Docker Compose (RDS 전용)
+# 이 파일은 RDS를 사용하는 운영 환경을 위한 것입니다.
+services:
+  spring-app:
+    build:
+      context: ../..
+      dockerfile: lv3-final-mission-config/prod/Dockerfile
+    container_name: lv3-final-mission-spring-app-prod
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./application-prod.yml:/config/application-prod.yml:ro
+      - /var/log/beauty-shop:/var/log/beauty-shop
+    environment:
+      # RDS 연결 정보
+      SPRING_DATASOURCE_URL: jdbc:mysql://razel-db.cqsc6pyqhwww.ap-northeast-2.rds.amazonaws.com:3306/yourdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: app_user
+      SPRING_DATASOURCE_PASSWORD: userpwd
+      SPRING_PROFILES_ACTIVE: prod
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-prod-secret-key-must-be-changed}
+      HOLIDAY_API_KEY: ${HOLIDAY_API_KEY}
+    command: >
+      --spring.profiles.active=prod
+      --spring.config.location=/config/application-prod.yml
+      --server.port=8080
+    restart: unless-stopped
+    # RDS 연결을 위한 네트워크 설정
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

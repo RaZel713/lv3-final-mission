@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: lv3-final-mission
+  profiles:
+    active: dev
+  
+  # MySQL Database for development
+  datasource:
+    url: jdbc:mysql://mysql:3306/beauty_shop?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: user
+    password: password
+  
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    defer-datasource-initialization: true
+  
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:testdata.sql
+
+# Security settings (개발 환경용)
+security:
+  holiday:
+    api:
+      service-key: GbJmfStUjTMn4fHb4w7jqlBGGIk9MnVLW7W22Ig1D6h3A7YaxvfDrAHjHhVGk1a%2BGhIcYysrZ%2BUovxZExR%2BmkA%3D%3D
+  jwt:
+    token:
+      secret-key: dev-secret-key-for-development-only
+      expire-length: 3600000
+
+# Logging (개발 환경용 - 상세 로그)
+logging:
+  level:
+    finalmission: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# Management endpoints (개발 환경용 - 모든 정보 노출)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
